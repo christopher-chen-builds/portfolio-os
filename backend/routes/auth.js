@@ -3,13 +3,17 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const bcrypt = require('bcryptjs');
 
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password required' });
   }
-  const user = db.prepare('SELECT * FROM users WHERE email = ? AND password = ?').get(email, password);
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
   if (!user) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }

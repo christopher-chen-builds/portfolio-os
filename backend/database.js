@@ -1,6 +1,6 @@
 'use strict';
 
-const Database = require('better-sqlite3');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
@@ -92,9 +92,10 @@ db.exec(`
 const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get('chris@chrischen.com');
 if (!existingUser) {
   // Seed user
+  const hashedPassword = bcrypt.hashSync('portfolio2026', 10);
   db.prepare('INSERT INTO users (email, password, name) VALUES (?, ?, ?)').run(
     'chris@chrischen.com',
-    'portfolio2026',
+    hashedPassword,
     'Chris Chen'
   );
 

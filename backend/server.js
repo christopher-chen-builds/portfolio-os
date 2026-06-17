@@ -5,6 +5,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 // Initialize database (creates tables + seeds data)
 const db = require('./database');
@@ -12,12 +13,21 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3457;
 
-// Middleware
+// CORS — restrict to same-origin in production; allow cross-origin in dev
 app.use(cors({
-  origin: true,
+  origin: process.env.ALLOWED_ORIGIN || false,
   credentials: true
 }));
 app.use(express.json());
+
+// Rate limiting on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 failed attempts per window
+  message: { error: 'Too many attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // Session setup
 app.use(session({
@@ -27,6 +37,7 @@ app.use(session({
   cookie: {
     secure: false, // set true if serving over HTTPS
     httpOnly: true,
+    sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   }
 }));
@@ -48,8 +59,8 @@ const alertRoutes = require('./routes/alerts');
 const dashboardRoutes = require('./routes/dashboard');
 const digestRoutes = require('./routes/digest');
 
-// Auth routes — public (no session required for login)
-app.use('/api/auth', authRoutes);
+// Auth routes — public (no session required for login) + rate limited
+app.use('/api/auth', authLimiter, authRoutes);
 
 // All other /api routes require session auth
 const { requireAuth } = require('./middleware/auth');
